@@ -13,7 +13,7 @@ app = Flask(__name__)
 
 # Adjust the PDF path after moving TheChatbotOpioid.py under templates
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Get the directory of TheChatbotOpioid.py
-PDF_PATH = os.path.join(BASE_DIR, "..", "PDFs", "OpioidInfo.pdf")  # Move up one level, then into PDFs
+PDF_PATH = os.path.join(BASE_DIR, "PDFs", "OpioidInfo.pdf")  # Point to the PDF in the PDFs folder
 
 def extract_text_from_pdf(pdf_path):
     text = ""
@@ -95,3 +95,4 @@ application = app
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
