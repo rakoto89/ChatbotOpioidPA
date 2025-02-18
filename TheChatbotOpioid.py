@@ -45,19 +45,21 @@ def is_question_relevant(question):
             temperature=0,
         )
         return response['choices'][0]['message']['content'].strip().lower() == "yes"
-    except Exception:
-        return False
+    except openai.AuthenticationError:
+        return False  # Return False if there is an authentication issue
+    except Exception as e:
+        return False  # Catch other errors and return False
 
 def get_gpt3_response(question, context):
     opioid_context = (
         "Assume the user is always asking about opioids or related topics like overdose, addiction, withdrawal, "
-        "painkillers, fentanyl, heroin, and narcotics, even if they don't explicitly mention 'opioids'."
+        "painkillers, fentanyl, heroin, and narcotics, even if they don't explicitly mention 'opioids.'"
     )
 
     try:
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
-            messages=[
+            messages=[ 
                 {"role": "system", "content": opioid_context},
                 {"role": "user", "content": f"Here is the document content:\n{context}\n\nQuestion: {question}"}
             ],
@@ -65,7 +67,7 @@ def get_gpt3_response(question, context):
             temperature=0.7,
         )
         return response['choices'][0]['message']['content'].strip()
-    except openai.error.AuthenticationError:
+    except openai.AuthenticationError:
         return "Authentication error: Check your OpenAI API key."
     except Exception as e:
         return f"An error occurred: {str(e)}"
