@@ -11,7 +11,7 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 app = Flask(__name__)
 
-PDF_PATH = r"C:\Users\Robin\iCloudDrive\Desktop\INSS 780\chatbot\LLM Project\PDFs\OpioidInfo.pdf"
+PDF_PATH = "OpioidInfo.pdf"
 
 
 def extract_text_from_pdf(pdf_path):
