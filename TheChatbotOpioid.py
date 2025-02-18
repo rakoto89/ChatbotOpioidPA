@@ -2,19 +2,20 @@ from flask import Flask, request, jsonify, render_template
 import openai
 import os
 import pdfplumber
+from dotenv import load_dotenv
 
-# Get API key from Render's environment variables
+# Load environment variables
+load_dotenv()
+
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Initialize Flask app
 app = Flask(__name__)
 
-# Path to the PDF file (assuming it is in the same directory as the script)
-PDF_PATH = os.path.join(os.path.dirname(__file__), "OpioidInfo.pdf")
-
+# Adjust the PDF path after moving TheChatbotOpioid.py under templates
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Get the directory of TheChatbotOpioid.py
+PDF_PATH = os.path.join(BASE_DIR, "..", "PDFs", "OpioidInfo.pdf")  # Move up one level, then into PDFs
 
 def extract_text_from_pdf(pdf_path):
-    """Extract text from the provided PDF file."""
     text = ""
     try:
         with pdfplumber.open(pdf_path) as pdf:
@@ -22,19 +23,13 @@ def extract_text_from_pdf(pdf_path):
                 extracted_text = page.extract_text()
                 if extracted_text:
                     text += extracted_text + "\n"
-    except Exception as e:
-        print(f"Error reading PDF: {e}")
-        return "Error extracting text from PDF."
-    
+    except FileNotFoundError:
+        text = "Error: PDF file not found."
     return text.strip()
 
-
-# Load PDF text once at startup
 pdf_text = extract_text_from_pdf(PDF_PATH)
 
-
 def is_question_relevant(question):
-    """Determines if a user's question is related to opioids and related topics."""
     relevance_prompt = (
         "Determine if the following question is related to opioids OR related topics such as overdose, withdrawal, "
         "prescription painkillers, fentanyl, narcotics, analgesics, opiates, opioid crisis, addiction, naloxone, or rehab. "
@@ -50,13 +45,10 @@ def is_question_relevant(question):
             temperature=0,
         )
         return response['choices'][0]['message']['content'].strip().lower() == "yes"
-    except openai.OpenAIError as e:
-        print(f"OpenAI API Error: {e}")  # Logs the error for debugging
+    except Exception:
         return False
 
-
 def get_gpt3_response(question, context):
-    """Generates a response from OpenAI using the extracted PDF context."""
     opioid_context = (
         "Assume the user is always asking about opioids or related topics like overdose, addiction, withdrawal, "
         "painkillers, fentanyl, heroin, and narcotics, even if they don't explicitly mention 'opioids'."
@@ -73,20 +65,18 @@ def get_gpt3_response(question, context):
             temperature=0.7,
         )
         return response['choices'][0]['message']['content'].strip()
-    except openai.OpenAIError as e:
-        return f"OpenAI API Error: {str(e)}"
-
+    except openai.error.AuthenticationError:
+        return "Authentication error: Check your OpenAI API key."
+    except Exception as e:
+        return f"An error occurred: {str(e)}"
 
 @app.route("/")
 def index():
-    """Render the chatbot web interface."""
-    return render_template("index.html")
-
+    return render_template("index.html")  
 
 @app.route("/ask", methods=["POST"])
 def ask():
-    """Handle user questions and return chatbot responses."""
-    user_question = request.form.get("question", "").strip()
+    user_question = request.form.get("question", "")
 
     if not user_question:
         return jsonify({"answer": "Please ask a valid question."})
@@ -98,6 +88,8 @@ def ask():
 
     return jsonify({"answer": answer})
 
+# Ensure Gunicorn can find the application
+application = app  
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)  # Allows external access
+    application.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
