@@ -1,16 +1,15 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template 
 import openai
 import os
 import pdfplumber
 
-# Directly get the OpenAI API key from environment variables
-openai.api_key = os.getenv("OPENAI_API_KEY")
-
 app = Flask(__name__)
 
-# Adjust the path for the PDF (relative to the script)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PDF_PATH = os.path.join(BASE_DIR, "PDFs", "OpioidInfo.pdf")
+# Access OpenAI API key directly from Render's environment variables
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+# Update the path to point to the PDFs folder in the project directory
+PDF_PATH = os.path.join(os.getcwd(), 'PDFs', 'OpioidInfo.pdf')
 
 def extract_text_from_pdf(pdf_path):
     text = ""
@@ -83,4 +82,6 @@ def ask():
     return jsonify({"answer": answer})
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Get the port from the environment variable (Render will assign this dynamically)
+    port = int(os.environ.get("PORT", 1000))  # Default to 1000 if PORT is not set
+    app.run(host="0.0.0.0", port=port)  # Ensure the app listens on the correct port
