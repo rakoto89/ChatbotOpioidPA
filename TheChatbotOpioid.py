@@ -2,29 +2,23 @@ from flask import Flask, request, jsonify, render_template
 import openai
 import os
 import pdfplumber
-from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
-
+# Directly get the OpenAI API key from environment variables
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 app = Flask(__name__)
 
-# Adjust the PDF path after moving TheChatbotOpioid.py under templates
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Get the directory of TheChatbotOpioid.py
-PDF_PATH = os.path.join(BASE_DIR, "PDFs", "OpioidInfo.pdf")  # Point to the PDF in the PDFs folder
+# Adjust the path for the PDF (relative to the script)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PDF_PATH = os.path.join(BASE_DIR, "PDFs", "OpioidInfo.pdf")
 
 def extract_text_from_pdf(pdf_path):
     text = ""
-    try:
-        with pdfplumber.open(pdf_path) as pdf:
-            for page in pdf.pages:
-                extracted_text = page.extract_text()
-                if extracted_text:
-                    text += extracted_text + "\n"
-    except FileNotFoundError:
-        text = "Error: PDF file not found."
+    with pdfplumber.open(pdf_path) as pdf:
+        for page in pdf.pages:
+            extracted_text = page.extract_text()
+            if extracted_text:
+                text += extracted_text + "\n"
     return text.strip()
 
 pdf_text = extract_text_from_pdf(PDF_PATH)
@@ -45,21 +39,19 @@ def is_question_relevant(question):
             temperature=0,
         )
         return response['choices'][0]['message']['content'].strip().lower() == "yes"
-    except openai.AuthenticationError:
-        return False  # Return False if there is an authentication issue
-    except Exception as e:
-        return False  # Catch other errors and return False
+    except Exception:
+        return False
 
 def get_gpt3_response(question, context):
     opioid_context = (
         "Assume the user is always asking about opioids or related topics like overdose, addiction, withdrawal, "
-        "painkillers, fentanyl, heroin, and narcotics, even if they don't explicitly mention 'opioids.'"
+        "painkillers, fentanyl, heroin, and narcotics, even if they don't explicitly mention 'opioids'."
     )
 
     try:
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
-            messages=[ 
+            messages=[
                 {"role": "system", "content": opioid_context},
                 {"role": "user", "content": f"Here is the document content:\n{context}\n\nQuestion: {question}"}
             ],
@@ -67,7 +59,7 @@ def get_gpt3_response(question, context):
             temperature=0.7,
         )
         return response['choices'][0]['message']['content'].strip()
-    except openai.AuthenticationError:
+    except openai.error.AuthenticationError:
         return "Authentication error: Check your OpenAI API key."
     except Exception as e:
         return f"An error occurred: {str(e)}"
@@ -90,9 +82,5 @@ def ask():
 
     return jsonify({"answer": answer})
 
-# Ensure Gunicorn can find the application
-application = app  
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
+    app.run(debug=True)
